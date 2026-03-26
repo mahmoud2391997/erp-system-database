@@ -1,0 +1,282 @@
+
+<style>
+#erd-wrap { padding: 8px 0; }
+#erd-wrap svg { width: 100%; height: auto; }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-btn { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; font-family: inherit; }
+.filter-btn.active { background: var(--color-background-info); color: var(--color-text-info); border-color: var(--color-border-info); font-weight: 500; }
+</style>
+
+<div class="filter-row">
+  <button class="filter-btn active" onclick="filterModule('all',this)">All modules</button>
+  <button class="filter-btn" onclick="filterModule('inv',this)">Inventory</button>
+  <button class="filter-btn" onclick="filterModule('hr',this)">Human resources</button>
+  <button class="filter-btn" onclick="filterModule('sales',this)">Sales & marketing</button>
+  <button class="filter-btn" onclick="filterModule('core',this)">Core / auth</button>
+</div>
+
+<div id="erd-wrap"></div>
+
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", Arial, sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '12px',
+    fontFamily: '"Anthropic Sans", Arial, sans-serif',
+    lineColor: dark ? '#9c9a92' : '#888780',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#2a2a28' : '#F1EFE8',
+    primaryTextColor: dark ? '#c2c0b6' : '#2C2C2A',
+    primaryBorderColor: dark ? '#5a5a55' : '#B4B2A9',
+    secondaryColor: dark ? '#1e3040' : '#E6F1FB',
+    tertiaryColor: dark ? '#1a2e1e' : '#E1F5EE',
+  },
+});
+
+const diagrams = {
+  all: `erDiagram
+    USERS ||--o{ EMPLOYEES : "has profile"
+    USERS }o--|| ROLES : "assigned"
+    ROLES ||--o{ ROLE_PERMISSIONS : "grants"
+    EMPLOYEES ||--o{ ATTENDANCE : "logs"
+    EMPLOYEES ||--o{ PAYROLL_LINES : "included in"
+    PAYROLL_RUNS ||--o{ PAYROLL_LINES : "contains"
+    EMPLOYEES ||--o{ KPI_REVIEWS : "receives"
+    EMPLOYEES ||--o{ EMPLOYEE_DOCUMENTS : "stores"
+    MATERIALS ||--o{ STOCK_MOVEMENTS : "tracked via"
+    SUPPLIERS ||--o{ PURCHASE_ORDERS : "fulfils"
+    PURCHASE_ORDERS ||--o{ PO_LINES : "has"
+    PO_LINES }o--|| MATERIALS : "references"
+    LEADS }o--|| USERS : "assigned to"
+    LEADS ||--o{ QUOTATIONS : "converts to"
+    QUOTATIONS ||--o{ BOQ_ITEMS : "contains"
+    CLIENTS ||--o{ QUOTATIONS : "receives"
+    CLIENTS ||--o{ INVOICES : "billed"
+    QUOTATIONS ||--o| INVOICES : "generates"
+    CAMPAIGNS ||--o{ CAMPAIGN_LEADS : "tracks"
+    LEADS ||--o{ CAMPAIGN_LEADS : "sourced from"`,
+
+  core: `erDiagram
+    USERS ||--o{ EMPLOYEES : "has profile"
+    USERS }o--|| ROLES : "assigned"
+    ROLES ||--o{ ROLE_PERMISSIONS : "grants"
+    USERS {
+      uuid id PK
+      string name
+      string email
+      string password_hash
+      uuid role_id FK
+      bool is_active
+      timestamp created_at
+    }
+    ROLES {
+      uuid id PK
+      string name
+      jsonb permissions
+    }
+    ROLE_PERMISSIONS {
+      uuid id PK
+      uuid role_id FK
+      string module
+      string action
+    }`,
+
+  inv: `erDiagram
+    MATERIALS ||--o{ STOCK_MOVEMENTS : "tracked via"
+    SUPPLIERS ||--o{ PURCHASE_ORDERS : "fulfils"
+    PURCHASE_ORDERS ||--o{ PO_LINES : "has"
+    PO_LINES }o--|| MATERIALS : "references"
+    MATERIALS {
+      uuid id PK
+      string name
+      string sku
+      string unit
+      decimal unit_price
+      decimal reorder_level
+      decimal stock_qty
+    }
+    STOCK_MOVEMENTS {
+      uuid id PK
+      uuid material_id FK
+      string type
+      decimal qty
+      string location_from
+      string location_to
+      timestamp created_at
+    }
+    SUPPLIERS {
+      uuid id PK
+      string name
+      string email
+      string phone
+      string trn
+    }
+    PURCHASE_ORDERS {
+      uuid id PK
+      uuid supplier_id FK
+      string status
+      decimal total_amount
+      decimal vat_amount
+      date issued_date
+    }
+    PO_LINES {
+      uuid id PK
+      uuid po_id FK
+      uuid material_id FK
+      decimal qty
+      decimal unit_price
+    }`,
+
+  hr: `erDiagram
+    EMPLOYEES ||--o{ ATTENDANCE : "logs"
+    EMPLOYEES ||--o{ PAYROLL_LINES : "included in"
+    PAYROLL_RUNS ||--o{ PAYROLL_LINES : "contains"
+    EMPLOYEES ||--o{ KPI_REVIEWS : "receives"
+    EMPLOYEES ||--o{ EMPLOYEE_DOCUMENTS : "stores"
+    EMPLOYEES {
+      uuid id PK
+      string full_name
+      string passport_no
+      string visa_no
+      string emirates_id
+      date joining_date
+      string position
+      decimal basic_salary
+      date visa_expiry
+    }
+    ATTENDANCE {
+      uuid id PK
+      uuid employee_id FK
+      date date
+      timestamp check_in
+      timestamp check_out
+      decimal gps_lat
+      decimal gps_lng
+      string method
+    }
+    PAYROLL_RUNS {
+      uuid id PK
+      date period_start
+      date period_end
+      string status
+    }
+    PAYROLL_LINES {
+      uuid id PK
+      uuid run_id FK
+      uuid employee_id FK
+      decimal basic
+      decimal overtime
+      decimal allowances
+      decimal deductions
+      decimal net
+    }
+    KPI_REVIEWS {
+      uuid id PK
+      uuid employee_id FK
+      uuid reviewer_id FK
+      int score
+      text feedback
+      date review_date
+    }
+    EMPLOYEE_DOCUMENTS {
+      uuid id PK
+      uuid employee_id FK
+      string doc_type
+      string file_url
+      date expiry_date
+    }`,
+
+  sales: `erDiagram
+    LEADS }o--|| USERS : "assigned to"
+    LEADS ||--o{ QUOTATIONS : "converts to"
+    QUOTATIONS ||--o{ BOQ_ITEMS : "contains"
+    CLIENTS ||--o{ QUOTATIONS : "receives"
+    CLIENTS ||--o{ INVOICES : "billed"
+    QUOTATIONS ||--o| INVOICES : "generates"
+    CAMPAIGNS ||--o{ CAMPAIGN_LEADS : "tracks"
+    LEADS ||--o{ CAMPAIGN_LEADS : "sourced from"
+    LEADS {
+      uuid id PK
+      string client_name
+      string company
+      string email
+      string stage
+      uuid assigned_to FK
+      date follow_up_date
+    }
+    CLIENTS {
+      uuid id PK
+      string name
+      string company
+      string email
+      string phone
+    }
+    QUOTATIONS {
+      uuid id PK
+      uuid lead_id FK
+      uuid client_id FK
+      text scope_of_work
+      decimal material_cost
+      decimal labour_cost
+      decimal vat_amount
+      decimal total_amount
+      decimal retention_pct
+      string status
+    }
+    BOQ_ITEMS {
+      uuid id PK
+      uuid quotation_id FK
+      string description
+      decimal qty
+      decimal unit_price
+      decimal total
+    }
+    INVOICES {
+      uuid id PK
+      uuid client_id FK
+      uuid quotation_id FK
+      decimal amount
+      string status
+      date due_date
+    }
+    CAMPAIGNS {
+      uuid id PK
+      string name
+      string source
+      decimal budget
+      date start_date
+    }
+    CAMPAIGN_LEADS {
+      uuid id PK
+      uuid campaign_id FK
+      uuid lead_id FK
+    }`,
+};
+
+async function render(key) {
+  const wrap = document.getElementById('erd-wrap');
+  wrap.innerHTML = '<div style="padding:24px;color:var(--color-text-tertiary);font-size:13px">Rendering diagram…</div>';
+  try {
+    const { svg } = await mermaid.render('erd-svg-' + key + Date.now(), diagrams[key]);
+    wrap.innerHTML = svg;
+    const svgEl = wrap.querySelector('svg');
+    if (svgEl) { svgEl.style.width = '100%'; svgEl.style.height = 'auto'; svgEl.removeAttribute('width'); svgEl.removeAttribute('height'); }
+  } catch(e) {
+    wrap.innerHTML = '<div style="padding:12px;color:var(--color-text-danger);font-size:13px">Could not render diagram.</div>';
+  }
+}
+
+window.filterModule = function(key, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render(key);
+};
+
+render('all');
+</script>
